@@ -67,14 +67,29 @@ void flash_unlock(void)
 	FLASH->KEYR = 0xCDEF89AB;
 }
 
-static uint32_t checksum(const void *start, size_t len)
+uint32_t checksum(const void *start, size_t len)
 {
-	uint32_t *p = (uint32_t*)start;
+	uint32_t *p    = (uint32_t*)start;
 	uint32_t *tail = (uint32_t*)(start + len);
 	uint32_t value = 0;
 	while (p < tail)
 		value = __ROR(value, 31) + *p++;
 	return value;
+}
+
+uint32_t updateCRC32(uint32_t crc, const void *data, const int len)
+{
+   // STM32 normal CRC (not reversed)
+	#define POLY32     0xEDB88320
+	#define POLY32_REV 0x04C11DB7
+   const uint32_t *p = (const uint32_t *)data;
+   for (int i = 0; i < (len >> 2); i++)
+   {
+      crc ^= *p++;
+      for (int k = 0; k < 32; k++)
+         crc = (crc & 0x80000000) ? (crc << 1) ^ POLY32_REV : crc << 1;
+   }
+   return crc;
 }
 
 const uint32_t save_config_area = SAVE_CONFIG_ADDR;
@@ -85,8 +100,9 @@ int config_save(void)
 	uint16_t *dst = (uint16_t*)save_config_area;
 	int count = sizeof(config_t) / sizeof(uint16_t);
 
-	config.magic    = CONFIG_MAGIC;
-	config.checksum = checksum(&config, sizeof config - sizeof config.checksum);
+	config.magic  = CONFIG_MAGIC;
+	//config.crc  = checksum(&config, sizeof config - sizeof config.crc);
+	config.crc    = updateCRC32(0xffffffff, &config, sizeof(config) - sizeof(config.crc));
 
 	flash_unlock();
 
@@ -111,7 +127,9 @@ int config_recall(void)
 	if (src->magic != CONFIG_MAGIC)
 		return -1;
 
-	if (checksum(src, sizeof(*src) - sizeof(src->checksum)) != src->checksum)
+//	if (checksum(src, sizeof(*src) - sizeof(src->checksum)) != src->crc)
+//		return -1;
+	if (updateCRC32(0xffffffff, src, sizeof(*src) - sizeof(src->crc)) != src->crc)
 		return -1;
 
 	// duplicated saved data onto sram to be able to modify marker/trace
@@ -129,8 +147,9 @@ int caldata_save(uint32_t id, bool fixed)
 	uint16_t *dst       = (uint16_t *)(SAVE_PROP_CONFIG_ADDR + (id * SAVE_PROP_CONFIG_SIZE));
 	int count           = sizeof(properties_t) / sizeof(uint16_t);
 
-	current_props.magic    = CONFIG_MAGIC;
-	current_props.checksum = checksum(&current_props, sizeof current_props - sizeof current_props.checksum);
+	current_props.magic = CAL_MAGIC;
+	//current_props.crc = checksum(&current_props, sizeof current_props - sizeof current_props.crc);
+	current_props.crc   = updateCRC32(0xffffffff, &current_props, sizeof(current_props) - sizeof(current_props.crc));
 
 	flash_unlock();
 
@@ -170,7 +189,8 @@ int caldata_recall(uint32_t id, bool fixed)
 
 	void *dst = &current_props;
 
-	if (src->magic != CONFIG_MAGIC || checksum(src, sizeof(*src) - sizeof(src->checksum)) != src->checksum)
+//	if (src->magic != CAL_MAGIC || checksum(src, sizeof(*src) - sizeof(src->checksum)) != src->crc)
+	if (src->magic != CAL_MAGIC || updateCRC32(0xffffffff,src, sizeof(*src) - sizeof(src->crc)) != src->crc)
 	{
 		load_default_properties();
 		return -1;
@@ -195,11 +215,13 @@ const properties_t *caldata_ref(uint32_t id)
 
 	const properties_t *src = (const properties_t*)(SAVE_PROP_CONFIG_ADDR + id * SAVE_PROP_CONFIG_SIZE);
 
-	if (src->magic != CONFIG_MAGIC)
+	if (src->magic != CAL_MAGIC)
 		return NULL;
 
-	if (checksum(src, sizeof *src - sizeof src->checksum) != src->checksum)
-    return NULL;
+//	if (checksum(src, sizeof *src - sizeof src->crc) != src->crc)
+//    return NULL;
+	if (updateCRC32(0xffffffff,src, sizeof *src - sizeof src->crc) != src->crc)
+		return NULL;
 
 	return src;
 }

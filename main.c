@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.07-2 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.18-1 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -1063,8 +1063,8 @@ void load_default_properties(void)
 
    current_props._freq_mode           = FREQ_MODE_START_STOP;
 
-   // Checksum add on caldata_save
-   // current_props.checksum          = 0;
+   // CRC add on caldata_save
+   // current_props.crc          = 0;
 }
 
 int load_properties(uint32_t id)
@@ -3296,7 +3296,7 @@ void config_reset(void)
 
    config.integrator_coeff        = 1.0f;
 
-   config.checksum                = 0;
+   config.crc                     = 0;
 }
 
 // Main thread stack size defined in makefile USE_PROCESS_STACKSIZE = 0x200

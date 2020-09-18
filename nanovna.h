@@ -131,7 +131,13 @@ extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
    #define SAVE_FULL_AREA_SIZE     (SAVE_CONFIG_SIZE + (SAVEAREA_MAX * SAVE_PROP_CONFIG_SIZE))
 #endif
 
-#define CONFIG_MAGIC               0x434f4e45 // 'CONF'
+//#define CONFIG_MAGIC  0x434f4e45 // 'CONF'
+#define CONFIG_MAGIC    0x05965940
+
+//#define CAL_MAGIC     0x434f4e45 // 'CONF'
+#define CAL_MAGIC       0x80196208
+
+extern uint32_t updateCRC32(uint32_t crc, const void *data, const int len);
 
 // ******************************
 
@@ -550,7 +556,7 @@ typedef struct config
 
    uint8_t  _reserved2[75];                 // spare
 
-   uint32_t checksum;                       // checksum to valid these config settings
+   uint32_t crc;                            // checksum to valid these config settings
 } config_t;                                 // sizeof(config_t) = 128
 
 typedef struct properties
@@ -586,7 +592,7 @@ typedef struct properties
 
   uint8_t  _freq_mode;                      // frequency mode flags
 
-  uint32_t checksum;                        // checksum to valid these settings
+  uint32_t crc;                             // checksum to valid these settings
 } properties_t;    // with POINTS_COUNT = 101, sizeof(properties_t) == 4124 (need reduce size on 28 bytes to 4096 for more compact save slot size)
 
 extern int8_t previous_marker;
