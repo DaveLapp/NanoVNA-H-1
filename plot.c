@@ -638,14 +638,14 @@ static void format_smith_value(char *buf, int len, const float coeff[2], uint32_
 			break;
 
 		case MS_REIM:
-			//plot_printf(buf, len, "%F %c j%F", coeff[0], (coeff[1] >= 0) ? '+' : '-', fabsf(coeff[1]));
-			plot_printf(buf, len, "%.3f %c j%.3f", coeff[0], (coeff[1] >= 0) ? '+' : '-', fabsf(coeff[1]));
+			plot_printf(buf, len, "%F %c j%F", coeff[0], (coeff[1] >= 0) ? '+' : '-', fabsf(coeff[1]));
+			//plot_printf(buf, len, "%.3f %c j%.3f", coeff[0], (coeff[1] >= 0) ? '+' : '-', fabsf(coeff[1]));
 			break;
 
 		case MS_RX:
 			impedance(coeff, &zr, &zi, z0);
-			//plot_printf(buf, len, "%F %cj%F"S_OHM, zr, (zi >= 0) ? '+' : '-', fabsf(zi));
-			plot_printf(buf, len, "%.2f %c j%.2f"S_OHM, zr, (zi >= 0) ? '+' : '-', fabsf(zi));
+			plot_printf(buf, len, "%F %cj%F"S_OHM, zr, (zi >= 0) ? '+' : '-', fabsf(zi));
+			//plot_printf(buf, len, "%.2f %c j%.2f"S_OHM, zr, (zi >= 0) ? '+' : '-', fabsf(zi));
 			break;
 
 		case MS_RLC:
