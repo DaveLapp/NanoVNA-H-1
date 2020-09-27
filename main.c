@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-9 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-10 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -288,7 +288,8 @@ static float kaiser_window(int k, int n, float beta)
    const float r = ((float)(2 * k) / (n - 1)) - 1.0f;
    return bessel0(beta * sqrtf(1.0f - (r * r))) / bessel0(beta);
 }
-/*
+
+#if ((FFT_SIZE * 8) <= (SPI_BUFFER_SIZE * 2))
 static void transform_domain(void)
 {
    int ch;
@@ -392,7 +393,7 @@ static void transform_domain(void)
       }
    }
 }
-*/
+#else
 static void transform_domain(void)
 {  // this version creates and saves the window values in the upper part of the temp buffer
    // this means that we compute the window values just the once instead of twice if both S11 and S21 are TDR'ed, and so faster too
@@ -495,6 +496,7 @@ static void transform_domain(void)
       }
    }
 }
+#endif
 
 void streamWriteLoop(void *buffer, int size)
 {
