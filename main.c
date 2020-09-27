@@ -328,10 +328,10 @@ static void transform_domain(void)
    // the scale factor is to compensate for windowing.
    static float    window_scale;
    static uint16_t td_cache = 0;
-   const uint16_t  tc_check = (sweep_points << 5) | td_window | td_func;
-   if (td_cache != tc_check)
+   const uint16_t  td_check = (sweep_points << 5) | td_window | td_func;
+   if (td_cache != td_check)
    {  // window settings have changed
-      td_cache = tc_check;
+      td_cache = td_check;
       if (td_func == TD_FUNC_LOWPASS_STEP)
          window_scale = 1.0f;
       else
@@ -339,7 +339,7 @@ static void transform_domain(void)
          window_scale = 0.0f;
          for (i = 0; i < sweep_points; i++)
             window_scale += kaiser_window(i + offset, window_size, beta);
-         window_scale = (FFT_SIZE / 2) / window_scale;
+         window_scale = (float)(FFT_SIZE / 2) / window_scale;
          if (td_func == TD_FUNC_BANDPASS)
             window_scale *= 2;
       }
@@ -347,7 +347,7 @@ static void transform_domain(void)
 
    uint16_t ch_mask = get_sweep_mode();
 
-  	const float scale = window_scale / FFT_SIZE;
+   const float scale = window_scale / FFT_SIZE;
 
    for (ch = 0; ch < 2; ch++, ch_mask >>= 1)
    {
@@ -359,35 +359,35 @@ static void transform_domain(void)
       for (i = 0; i < sweep_points; i++)
       {
          const float w = kaiser_window(i + offset, window_size, beta) * scale;
-         tmp[i * 2 + 0] *= w;
-         tmp[i * 2 + 1] *= w;
+         tmp[(i * 2) + 0] *= w;
+         tmp[(i * 2) + 1] *= w;
       }
 
       for (i = sweep_points; i < FFT_SIZE; i++)
       {
-         tmp[i * 2 + 0] = 0.0f;
-         tmp[i * 2 + 1] = 0.0f;
+         tmp[(i * 2) + 0] = 0.0f;
+         tmp[(i * 2) + 1] = 0.0f;
       }
 
       if (td_func == TD_FUNC_LOWPASS_IMPULSE || td_func == TD_FUNC_LOWPASS_STEP)
       {  // low pass
          for (i = 1; i < sweep_points; i++)
-         {
-            tmp[(FFT_SIZE - i) * 2 + 0] =  tmp[i * 2 + 0];
-            tmp[(FFT_SIZE - i) * 2 + 1] = -tmp[i * 2 + 1];
+         {  // conjugate
+            tmp[((FFT_SIZE - i) * 2) + 0] =  tmp[(i * 2) + 0];
+            tmp[((FFT_SIZE - i) * 2) + 1] = -tmp[(i * 2) + 1];
          }
       }
 
       fft256_inverse((float(*)[2])tmp);
 
-     	memcpy(measured[ch], tmp, sizeof(measured[ch]));
+      memcpy(measured[ch], tmp, sizeof(measured[ch]));
 
-     	if (td_func == TD_FUNC_LOWPASS_STEP)
+      if (td_func == TD_FUNC_LOWPASS_STEP)
       {
          for (i = 1; i < sweep_points; i++)
-         {
-         	measured[ch][i][0] += measured[ch][i - 1][0];
-         	measured[ch][i][1] += measured[ch][i - 1][1];
+         {  // convolve
+            measured[ch][i][0] += measured[ch][i - 1][0];
+            measured[ch][i][1] += measured[ch][i - 1][1];
          }
       }
    }
