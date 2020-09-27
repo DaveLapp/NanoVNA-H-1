@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-1 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-3 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -298,6 +298,24 @@ static void transform_domain(void)
    // and calculate ifft for time domain
    float *tmp = (float *)spi_buffer;
 
+   float beta    = 0.0f;
+   float win_corr = 1.0f;
+   switch (domain_mode & TD_WINDOW)
+   {
+      case TD_WINDOW_MINIMUM:
+      	//beta = 0.0f;  // this is rectangular
+   		win_corr = (float)FFT_SIZE / (2 * POINTS_COUNT);		// loss by zero-padding 202 to 256 points
+         break;
+      case TD_WINDOW_NORMAL:
+      	beta = 6.0f;
+         win_corr = (FFT_SIZE * 2.01f) / (2 * POINTS_COUNT);	// additional window loss: 1.0 / mean(kaiser(202, 6)) = 2.01
+         break;
+      case TD_WINDOW_MAXIMUM:
+         beta = 13.0f;
+         win_corr = (FFT_SIZE * 2.92f) / (2 * POINTS_COUNT);	// additional window loss: 1.0 / mean(kaiser(202, 13)) = 2.92
+         break;
+   }
+
    uint16_t window_size = POINTS_COUNT;
    uint16_t offset      = 0;
    uint8_t is_lowpass   = FALSE;
@@ -306,27 +324,14 @@ static void transform_domain(void)
       case TD_FUNC_BANDPASS:
          offset      = 0;
          window_size = POINTS_COUNT;
+         win_corr *= 2.0f;						// window size is half the size as assumed above => twice the IFFT loss
          break;
-      case TD_FUNC_LOWPASS_IMPULSE:
       case TD_FUNC_LOWPASS_STEP:
+         win_corr = 1.0f;						// no IFFT losses need to be considered to calculate the step response
+      case TD_FUNC_LOWPASS_IMPULSE:
          is_lowpass  = TRUE;
          offset      = POINTS_COUNT;
          window_size = POINTS_COUNT * 2;
-         break;
-   }
-
-   float beta = 0.0f;
-   switch (domain_mode & TD_WINDOW)
-   {
-      case TD_WINDOW_MINIMUM:
-//       beta = 0.0f;  // this is rectangular
-         break;
-      case TD_WINDOW_NORMAL:
-         beta = 5.0f;
-//       beta = 6.0f;
-         break;
-      case TD_WINDOW_MAXIMUM:
-         beta = 13.0f;
          break;
    }
 
@@ -341,7 +346,7 @@ static void transform_domain(void)
 
       for (i = 0; i < POINTS_COUNT; i++)
       {
-         const float w = kaiser_window(i + offset, window_size, beta);
+         const float w = kaiser_window(i + offset, window_size, beta) * win_corr;
          tmp[i * 2 + 0] *= w;
          tmp[i * 2 + 1] *= w;
       }
@@ -1789,8 +1794,8 @@ static void eterm_calc_es(void)
     const float c      = 50e-15f;
     //const float c    = 1.707e-12;
     const float z0     = 50.0f;
-    const float z      = (2 * VNA_PI) * frequencies[i] * c * z0;
-    float sq           =  1 + (z * z);
+    const float z      = (float)(2 * VNA_PI) * frequencies[i] * c * z0;
+    const float sq     =  1 + (z * z);
     const float s11aor = (1 - (z * z)) / sq;
     const float s11aoi = (2 * z) / sq;
 
@@ -1802,18 +1807,20 @@ static void eterm_calc_es(void)
     const float s11sr = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
     const float s11si = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
 
-    // Es = (S11mo'/s11ao + S11ms’)/(S11mo' - S11ms’)
+    {
+   	 // Es = (S11mo'/s11ao + S11ms’)/(S11mo' - S11ms’)
 
-    const float numr = s11sr + (s11or * s11aor) - (s11oi * s11aoi);
-    const float numi = s11si + (s11oi * s11aor) + (s11or * s11aoi);
+   	 const float numr = s11sr + (s11or * s11aor) - (s11oi * s11aoi);
+   	 const float numi = s11si + (s11oi * s11aor) + (s11or * s11aoi);
 
-    const float denomr = s11or - s11sr;
-    const float denomi = s11oi - s11si;
+   	 const float denomr = s11or - s11sr;
+   	 const float denomi = s11oi - s11si;
 
-    sq = (denomr * denomr) + (denomi * denomi);
+   	 const float sq = (denomr * denomr) + (denomi * denomi);
 
-    cal_data[ETERM_ES][i][0] = ((numr * denomr) + (numi * denomi)) / sq;
-    cal_data[ETERM_ES][i][1] = ((numi * denomr) - (numr * denomi)) / sq;
+   	 cal_data[ETERM_ES][i][0] = ((numr * denomr) + (numi * denomi)) / sq;
+   	 cal_data[ETERM_ES][i][1] = ((numi * denomr) - (numr * denomi)) / sq;
+    }
   }
 
   cal_status &= ~CALSTAT_OPEN;
@@ -1975,32 +1982,36 @@ static void apply_CH1_error_term_at(float gamma[2], int i)
 
 static void apply_edelay(void)
 {
-  const uint16_t sweep_mode = get_sweep_mode();
-  int i;
-  for (i = 0; i < sweep_points; i++)
-  {
-    const float w = (float)(2 * VNA_PI * 1e-12) * electrical_delay * frequencies[i];
+	const uint16_t sweep_mode = get_sweep_mode();
 
-    //const float s = sinf(w);
-    //const float c = cosf(w);
-    float s, c;
-    arm_sin_cos_f32(w, &s, &c);
+	int i;
+	for (i = 0; i < sweep_points; i++)
+	{
+		const float w = (float)(2 * VNA_PI * 1e-12) * electrical_delay * frequencies[i];
 
-    if (sweep_mode & SWEEP_CH0_MEASURE)
-    {
-      const float real = measured[0][i][0];
-      const float imag = measured[0][i][1];
-      measured[0][i][0] = (real * c) - (imag * s);
-      measured[0][i][1] = (imag * c) + (real * s);
-    }
-    if (sweep_mode & SWEEP_CH1_MEASURE)
-    {
-      const float real = measured[1][i][0];
-      const float imag = measured[1][i][1];
-      measured[1][i][0] = (real * c) - (imag * s);
-      measured[1][i][1] = (imag * c) + (real * s);
-    }
-  }
+		#if 0
+			const float s = sinf(w);
+			const float c = cosf(w);
+		#else
+			float s, c;
+			arm_sin_cos_f32(w, &s, &c);
+		#endif
+
+		if (sweep_mode & SWEEP_CH0_MEASURE)
+		{
+			const float real = measured[0][i][0];
+			const float imag = measured[0][i][1];
+			measured[0][i][0] = (real * c) - (imag * s);
+			measured[0][i][1] = (imag * c) + (real * s);
+		}
+		if (sweep_mode & SWEEP_CH1_MEASURE)
+		{
+			const float real = measured[1][i][0];
+			const float imag = measured[1][i][1];
+			measured[1][i][0] = (real * c) - (imag * s);
+			measured[1][i][1] = (imag * c) + (real * s);
+		}
+	}
 }
 
 void cal_collect(int type)

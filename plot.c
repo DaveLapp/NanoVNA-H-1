@@ -458,7 +458,7 @@ float linear(const float *v)
 float phase(const float *v)
 {
 //	return (v[0] == 0.0f) ? 0.0f : 2.0f * atan2f(v[1], v[0]) / VNA_PI * 90.0f;
-	return (v[1] == 0.0f) ? 0.0f : 2.0f * atan2f(v[0], v[1]) * (90.0f / VNA_PI);
+	return (v[1] == 0.0f) ? 0.0f : atan2f(v[0], v[1]) * (float)(180.0 / VNA_PI);
 }
 
 /*
@@ -654,12 +654,12 @@ static void format_smith_value(char *buf, int len, const float coeff[2], uint32_
 			if (zi < 0)
 			{	// capacitance
 				prefix = 'F';
-				value = -1.0f / ((2 * VNA_PI) * frequency * zi);
+				value = -1.0f / ((float)(2 * VNA_PI) * frequency * zi);
 			}
 			else
 			{	// inductance
 				prefix = 'H';
-				value = zi / ((2 * VNA_PI) * frequency);
+				value = zi / ((float)(2 * VNA_PI) * frequency);
 			}
 			plot_printf(buf, len, "%F"S_OHM" %F%c", zr, value, prefix);
 			break;
