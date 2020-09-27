@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-6 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-7 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -334,30 +334,22 @@ static void transform_domain(void)
 
    // recalculate the scale factor if any window settings are changed.
    // the scale factor is to compensate for windowing.
-   static uint8_t  td_func_cache     = -1;
-   static uint16_t window_size_cache = 0;
-   static float    beta_cache        = -1.0f;
-   static float    window_scale      = 1.0f;
-   if (td_func_cache != td_func || window_size_cache != window_size || beta_cache != beta)
+   static float    window_scale;
+   static uint16_t td_cache = 0;
+   const uint16_t  tc_check = (sweep_points << 5) | (domain_mode & (TD_WINDOW | TD_FUNC));
+   if (td_cache != tc_check)
    {
-      td_func_cache     = td_func;
-      window_size_cache = window_size;
-      beta_cache        = beta;
-      window_scale      = 1.0f;
-
-      if (td_func != TD_FUNC_LOWPASS_STEP)
+      td_cache = tc_check;
+      if (td_func == TD_FUNC_LOWPASS_STEP)
+         window_scale = 1.0f;
+      else
       {
          window_scale = 0.0f;
          for (i = 0; i < sweep_points; i++)
             window_scale += kaiser_window(i + offset, window_size, beta);
-         //window_scale /= sweep_points;
-         //window_scale = 1.0f / window_scale;
-         //window_scale *= (float)FFT_SIZE / (2 * sweep_points);
-
-         window_scale = (float)(FFT_SIZE / 2) / window_scale;
-
+         window_scale = (FFT_SIZE / 2) / window_scale;
          if (td_func == TD_FUNC_BANDPASS)
-            window_scale *= 2.0f;
+            window_scale *= 2;
       }
    }
 
