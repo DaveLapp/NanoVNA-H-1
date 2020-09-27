@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-5 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-6 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -319,20 +319,21 @@ static void transform_domain(void)
 
   	const uint8_t td_func = domain_mode & TD_FUNC;
 
-  	uint16_t window_size = POINTS_COUNT;
+  	uint16_t window_size = sweep_points;
    uint16_t offset      = 0;
    uint8_t is_lowpass   = FALSE;
+
    switch (td_func)
    {
       case TD_FUNC_BANDPASS:
-         offset      = 0;
-         window_size = POINTS_COUNT;
+         offset = 0;
+         window_size = sweep_points;
          break;
       case TD_FUNC_LOWPASS_IMPULSE:
       case TD_FUNC_LOWPASS_STEP:
          is_lowpass  = TRUE;
-         offset      = POINTS_COUNT;
-         window_size = POINTS_COUNT * 2;
+         offset      = sweep_points;
+         window_size = sweep_points * 2;
          break;
    }
 
@@ -348,16 +349,17 @@ static void transform_domain(void)
    	if (td_func != TD_FUNC_LOWPASS_STEP)
    	{
    		window_scale = 0.0f;
-   		for (i = 0; i < window_size; i++)
+   		for (i = 0; i < sweep_points; i++)
    		{
    			const float w = kaiser_window(i + offset, window_size, beta);
    			window_scale += w;
    		}
-   		window_scale *= 1.0f / window_size;
-   		window_scale  = 1.0f / window_scale;
+   		window_scale /= sweep_points;
 
+   		window_scale = 1.0f / window_scale;
+         window_scale *= (float)FFT_SIZE / (2 * sweep_points);
    		if (td_func == TD_FUNC_BANDPASS)
-				window_scale *= 4.0f;	// hmmm, should be 2 not 4
+				window_scale *= 2.0f;
      	}
 	}
 
@@ -370,14 +372,14 @@ static void transform_domain(void)
 
       memcpy(tmp, measured[ch], sizeof(measured[0]));
 
-		for (i = 0; i < POINTS_COUNT; i++)
+		for (i = 0; i < sweep_points; i++)
       {
          const float w = kaiser_window(i + offset, window_size, beta) * window_scale;
          tmp[i * 2 + 0] *= w;
          tmp[i * 2 + 1] *= w;
       }
 
-      for (i = POINTS_COUNT; i < FFT_SIZE; i++)
+      for (i = sweep_points; i < FFT_SIZE; i++)
       {
          tmp[i * 2 + 0] = 0.0f;
          tmp[i * 2 + 1] = 0.0f;
@@ -385,7 +387,7 @@ static void transform_domain(void)
 
       if (is_lowpass)
       {
-         for (i = 1; i < POINTS_COUNT; i++)
+         for (i = 1; i < sweep_points; i++)
          {
             tmp[(FFT_SIZE - i) * 2 + 0] =  tmp[i * 2 + 0];
             tmp[(FFT_SIZE - i) * 2 + 1] = -tmp[i * 2 + 1];
@@ -396,7 +398,7 @@ static void transform_domain(void)
 
       memcpy(measured[ch], tmp, sizeof(measured[0]));
 
-      for (i = 0; i < POINTS_COUNT; i++)
+      for (i = 0; i < sweep_points; i++)
       {
          measured[ch][i][0] *= 1.0f / FFT_SIZE;
          if (is_lowpass)
@@ -405,9 +407,9 @@ static void transform_domain(void)
             measured[ch][i][1] *= 1.0f / FFT_SIZE;
       }
 
-      if ((domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP)
+      if (td_func == TD_FUNC_LOWPASS_STEP)
       {
-         for (i = 1; i < POINTS_COUNT; i++)
+         for (i = 1; i < sweep_points; i++)
             measured[ch][i - 0][0] += measured[ch][i - 1][0];
       }
    }
