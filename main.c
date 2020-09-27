@@ -332,7 +332,7 @@ static void transform_domain(void)
          break;
    }
 
-   // recalculate the scale factor if any window details are changed.
+   // recalculate the scale factor if any window settings are changed.
    // the scale factor is to compensate for windowing.
    static uint8_t  td_func_cache     = -1;
    static uint16_t window_size_cache = 0;
@@ -347,15 +347,16 @@ static void transform_domain(void)
 
    	if (td_func != TD_FUNC_LOWPASS_STEP)
    	{
-         // compute the average window value
    		window_scale = 0.0f;
    		for (i = 0; i < sweep_points; i++)
    			window_scale += kaiser_window(i + offset, window_size, beta);
-   		window_scale /= sweep_points;
+   		//window_scale /= sweep_points;
+         //window_scale = 1.0f / window_scale;
+         //window_scale *= (float)FFT_SIZE / (2 * sweep_points);
 
-   		window_scale = 1.0f / window_scale;
-         window_scale *= (float)FFT_SIZE / (2 * sweep_points);
-   		if (td_func == TD_FUNC_BANDPASS)
+   		window_scale = (float)(FFT_SIZE / 2) / window_scale;
+
+         if (td_func == TD_FUNC_BANDPASS)
 				window_scale *= 2.0f;
      	}
 	}
