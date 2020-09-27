@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-7 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-8 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -298,35 +298,27 @@ static void transform_domain(void)
    // and calculate ifft for time domain
    float *tmp = (float *)spi_buffer;
 
+   const uint8_t td_window = domain_mode & TD_WINDOW;
+   const uint8_t td_func   = domain_mode & TD_FUNC;
+
    float beta = 0.0f;
-   switch (domain_mode & TD_WINDOW)
+   switch (td_window)
    {
-      case TD_WINDOW_MINIMUM:
-         //beta = 0.0f;  // this is rectangular
-         break;
-      case TD_WINDOW_NORMAL:
-         beta = 6.0f;
-         break;
-      case TD_WINDOW_MAXIMUM:
-         beta = 13.0f;
-         break;
+      case TD_WINDOW_MINIMUM: beta =  0.0f; break;
+      case TD_WINDOW_NORMAL:  beta =  6.0f; break;
+      case TD_WINDOW_MAXIMUM: beta = 13.0f; break;
    }
 
-   const uint8_t td_func = domain_mode & TD_FUNC;
-
-   uint16_t window_size = sweep_points;
    uint16_t offset      = 0;
-   uint8_t is_lowpass   = FALSE;
-
+   uint16_t window_size = sweep_points;
    switch (td_func)
    {
       case TD_FUNC_BANDPASS:
-         offset = 0;
+         offset      = 0;
          window_size = sweep_points;
          break;
       case TD_FUNC_LOWPASS_IMPULSE:
       case TD_FUNC_LOWPASS_STEP:
-         is_lowpass  = TRUE;
          offset      = sweep_points;
          window_size = sweep_points * 2;
          break;
@@ -336,9 +328,9 @@ static void transform_domain(void)
    // the scale factor is to compensate for windowing.
    static float    window_scale;
    static uint16_t td_cache = 0;
-   const uint16_t  tc_check = (sweep_points << 5) | (domain_mode & (TD_WINDOW | TD_FUNC));
+   const uint16_t  tc_check = (sweep_points << 5) | td_window | td_func;
    if (td_cache != tc_check)
-   {
+   {  // window settings have changed
       td_cache = tc_check;
       if (td_func == TD_FUNC_LOWPASS_STEP)
          window_scale = 1.0f;
@@ -355,16 +347,18 @@ static void transform_domain(void)
 
    uint16_t ch_mask = get_sweep_mode();
 
+  	const float scale = window_scale / FFT_SIZE;
+
    for (ch = 0; ch < 2; ch++, ch_mask >>= 1)
    {
       if ((ch_mask & 1) == 0)
          continue;
 
-      memcpy(tmp, measured[ch], sizeof(measured[0]));
+      memcpy(tmp, measured[ch], sizeof(measured[ch]));
 
       for (i = 0; i < sweep_points; i++)
       {
-         const float w = kaiser_window(i + offset, window_size, beta) * window_scale;
+         const float w = kaiser_window(i + offset, window_size, beta) * scale;
          tmp[i * 2 + 0] *= w;
          tmp[i * 2 + 1] *= w;
       }
@@ -375,8 +369,8 @@ static void transform_domain(void)
          tmp[i * 2 + 1] = 0.0f;
       }
 
-      if (is_lowpass)
-      {
+      if (td_func == TD_FUNC_LOWPASS_IMPULSE || td_func == TD_FUNC_LOWPASS_STEP)
+      {  // low pass
          for (i = 1; i < sweep_points; i++)
          {
             tmp[(FFT_SIZE - i) * 2 + 0] =  tmp[i * 2 + 0];
@@ -386,21 +380,15 @@ static void transform_domain(void)
 
       fft256_inverse((float(*)[2])tmp);
 
-      memcpy(measured[ch], tmp, sizeof(measured[0]));
+     	memcpy(measured[ch], tmp, sizeof(measured[ch]));
 
-      for (i = 0; i < sweep_points; i++)
-      {
-         measured[ch][i][0] *= 1.0f / FFT_SIZE;
-         if (is_lowpass)
-            measured[ch][i][1]  = 0.0f;
-         else
-            measured[ch][i][1] *= 1.0f / FFT_SIZE;
-      }
-
-      if (td_func == TD_FUNC_LOWPASS_STEP)
+     	if (td_func == TD_FUNC_LOWPASS_STEP)
       {
          for (i = 1; i < sweep_points; i++)
-            measured[ch][i - 0][0] += measured[ch][i - 1][0];
+         {
+         	measured[ch][i][0] += measured[ch][i - 1][0];
+         	measured[ch][i][1] += measured[ch][i - 1][1];
+         }
       }
    }
 }
