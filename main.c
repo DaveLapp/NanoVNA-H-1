@@ -395,7 +395,7 @@ static void transform_domain(void)
 */
 static void transform_domain(void)
 {  // this version creates and saves the window values in the upper part of the temp buffer
-   // this means that we compute the window values just the oncee instead of twice if both S11 and S21 are TDR'ed
+   // this means that we compute the window values just the once instead of twice if both S11 and S21 are TDR'ed, and so faster too
    // this also uses up less flash area for the code
 
    int ch;
@@ -437,12 +437,12 @@ static void transform_domain(void)
    float window_scale = 1.0f;
    if (td_func != TD_FUNC_LOWPASS_STEP)
    {
-   	window_scale = 0.0f;
-   	for (i = 0; i < sweep_points; i++)
-   		window_scale += tmp[(FFT_SIZE * 2) + i];
-   	window_scale = (float)(FFT_SIZE / 2) / window_scale;
-   	if (td_func == TD_FUNC_BANDPASS)
-   		window_scale *= 2;
+      window_scale = 0.0f;
+      for (i = 0; i < sweep_points; i++)
+         window_scale += tmp[(FFT_SIZE * 2) + i];
+      window_scale = (float)(FFT_SIZE / 2) / window_scale;
+      if (td_func == TD_FUNC_BANDPASS)
+         window_scale *= 2;
    }
 
    const float scale = window_scale / FFT_SIZE;   // save time by scaling the input values rather than an additional scaling run after the FFT
