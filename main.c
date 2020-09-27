@@ -56,7 +56,7 @@
    #endif
 
    #ifdef __USE_SD_CARD_AUTO_SAVE_PERIOD__
-      uint16_t auto_save_secs  = 0;	// '0' = disabled, otherwise s2P files are saved every 'n' seconds to SD card
+      uint16_t auto_save_secs  = 0;   // '0' = disabled, otherwise s2P files are saved every 'n' seconds to SD card
       systime_t auto_save_time = 0;
       #endif
 #endif
@@ -215,18 +215,18 @@ static THD_FUNCTION(Thread1, arg)
          if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
             transform_domain();
 
-			#ifdef __USE_SD_CARD_AUTO_SAVE_PERIOD__
-        		if (auto_save_secs > 0)
-        		{
-        			const systime_t now   = chVTGetSystemTime();
-        			const systime_t delta = now - auto_save_time;
-        			if (delta >= S2ST(auto_save_secs))
-        			{	// save the current measurement to SD card
-        				auto_save_time = now;
-        				sd_save_sparam_file(SAVE_S2P_FILE, false);
-        			}
-        		}
-			#endif
+         #ifdef __USE_SD_CARD_AUTO_SAVE_PERIOD__
+              if (auto_save_secs > 0)
+              {
+                 const systime_t now   = chVTGetSystemTime();
+                 const systime_t delta = now - auto_save_time;
+                 if (delta >= S2ST(auto_save_secs))
+                 {   // save the current measurement to SD card
+                    auto_save_time = now;
+                    sd_save_sparam_file(SAVE_S2P_FILE, false);
+                 }
+              }
+         #endif
 
          // Prepare draw graphics, cache all lines, mark screen cells for redraw
          plot_into_index(measured);
@@ -302,19 +302,19 @@ static void transform_domain(void)
    switch (domain_mode & TD_WINDOW)
    {
       case TD_WINDOW_MINIMUM:
-      	//beta = 0.0f;  // this is rectangular
+         //beta = 0.0f;  // this is rectangular
          break;
       case TD_WINDOW_NORMAL:
-      	beta = 6.0f;
+         beta = 6.0f;
          break;
       case TD_WINDOW_MAXIMUM:
          beta = 13.0f;
          break;
    }
 
-  	const uint8_t td_func = domain_mode & TD_FUNC;
+   const uint8_t td_func = domain_mode & TD_FUNC;
 
-  	uint16_t window_size = sweep_points;
+   uint16_t window_size = sweep_points;
    uint16_t offset      = 0;
    uint8_t is_lowpass   = FALSE;
 
@@ -340,26 +340,26 @@ static void transform_domain(void)
    static float    window_scale      = 1.0f;
    if (td_func_cache != td_func || window_size_cache != window_size || beta_cache != beta)
    {
-   	td_func_cache     = td_func;
-   	window_size_cache = window_size;
-   	beta_cache        = beta;
-    	window_scale      = 1.0f;
+      td_func_cache     = td_func;
+      window_size_cache = window_size;
+      beta_cache        = beta;
+      window_scale      = 1.0f;
 
-   	if (td_func != TD_FUNC_LOWPASS_STEP)
-   	{
-   		window_scale = 0.0f;
-   		for (i = 0; i < sweep_points; i++)
-   			window_scale += kaiser_window(i + offset, window_size, beta);
-   		//window_scale /= sweep_points;
+      if (td_func != TD_FUNC_LOWPASS_STEP)
+      {
+         window_scale = 0.0f;
+         for (i = 0; i < sweep_points; i++)
+            window_scale += kaiser_window(i + offset, window_size, beta);
+         //window_scale /= sweep_points;
          //window_scale = 1.0f / window_scale;
          //window_scale *= (float)FFT_SIZE / (2 * sweep_points);
 
-   		window_scale = (float)(FFT_SIZE / 2) / window_scale;
+         window_scale = (float)(FFT_SIZE / 2) / window_scale;
 
          if (td_func == TD_FUNC_BANDPASS)
-				window_scale *= 2.0f;
-     	}
-	}
+            window_scale *= 2.0f;
+      }
+   }
 
    uint16_t ch_mask = get_sweep_mode();
 
@@ -370,7 +370,7 @@ static void transform_domain(void)
 
       memcpy(tmp, measured[ch], sizeof(measured[0]));
 
-		for (i = 0; i < sweep_points; i++)
+      for (i = 0; i < sweep_points; i++)
       {
          const float w = kaiser_window(i + offset, window_size, beta) * window_scale;
          tmp[i * 2 + 0] *= w;
@@ -415,19 +415,19 @@ static void transform_domain(void)
 
 void streamWriteLoop(void *buffer, int size)
 {
-	const uint8_t *buf = (const uint8_t *)buffer;
+   const uint8_t *buf = (const uint8_t *)buffer;
 
-	int max_loops = 100;
+   int max_loops = 100;
 
-	int total_sent = 0;
+   int total_sent = 0;
 
-	while (total_sent < size)
+   while (total_sent < size)
    {
-		const int sent = (int)streamWrite(shell_stream, (void *)&buf[total_sent], size - total_sent);
-		if (sent > 0)
-      	total_sent += sent;
-     	if (--max_loops <= 0)
-     		break;
+      const int sent = (int)streamWrite(shell_stream, (void *)&buf[total_sent], size - total_sent);
+      if (sent > 0)
+         total_sent += sent;
+        if (--max_loops <= 0)
+           break;
    }
 }
 
@@ -502,9 +502,9 @@ int shell_printf(const char *fmt, ...)
          return;
       }
 
-      {	// number of bytes to follow (file size)
-      	const uint32_t filesize = f_size(fs_file);
-      	streamWriteLoop((void *)&filesize, 4);
+      {   // number of bytes to follow (file size)
+         const uint32_t filesize = f_size(fs_file);
+         streamWriteLoop((void *)&filesize, 4);
       }
 
       // file data
@@ -599,7 +599,7 @@ static int set_frequency(uint32_t freq)
 
 //static int set_frequency(uint32_t freq)
 //{
-//	return si5351_set_frequency(freq, current_props._power);
+//   return si5351_set_frequency(freq, current_props._power);
 //}
 
 // Use macro, std isdigit more big
@@ -771,100 +771,100 @@ VNA_SHELL_FUNCTION(cmd_power)
 #ifdef __USE_RTC__
    VNA_SHELL_FUNCTION(cmd_time)
    {
-   	(void)argc;
-   	(void)argv;
+      (void)argc;
+      (void)argv;
 
-   	uint32_t dt_buf[2];
+      uint32_t dt_buf[2];
 
-   	dt_buf[0] = rtc_get_tr_bcd(); // TR should be read first for sync
-   	dt_buf[1] = rtc_get_dr_bcd(); // DR should be read second
+      dt_buf[0] = rtc_get_tr_bcd(); // TR should be read first for sync
+      dt_buf[1] = rtc_get_dr_bcd(); // DR should be read second
 
-   	static const uint8_t idx_to_time[] = {6,5,4,2,  1,  0};
-   	static const char       time_cmd[] = "y|m|d|h|min|sec";
+      static const uint8_t idx_to_time[] = {6,5,4,2,  1,  0};
+      static const char       time_cmd[] = "y|m|d|h|min|sec";
 
-   	//            0    1   2       4      5     6
-   	// time[] ={sec, min, hr, 0, day, month, year, 0}
+      //            0    1   2       4      5     6
+      // time[] ={sec, min, hr, 0, day, month, year, 0}
 
-   	uint8_t *time = (uint8_t *)dt_buf;
+      uint8_t *time = (uint8_t *)dt_buf;
 
-   	if (argc >= 3 && get_str_index(argv[0], "b") == 0)
-   	{
-   		rtc_set_time(my_atoui(argv[1]), my_atoui(argv[2]));
-   		return;
-   	}
+      if (argc >= 3 && get_str_index(argv[0], "b") == 0)
+      {
+         rtc_set_time(my_atoui(argv[1]), my_atoui(argv[2]));
+         return;
+      }
 
-   	if (argc != 2)
-   		goto usage;
+      if (argc != 2)
+         goto usage;
 
-   	const int idx = get_str_index(argv[0], time_cmd);
+      const int idx = get_str_index(argv[0], time_cmd);
 
-   	const uint32_t val = my_atoui(argv[1]);
-   	if (idx < 0 || val > 99)
-   		goto usage;
+      const uint32_t val = my_atoui(argv[1]);
+      if (idx < 0 || val > 99)
+         goto usage;
 
-   	// Write byte value in struct
-   	time[idx_to_time[idx]] = ((val / 10) << 4) | (val % 10); // value in bcd format
-   	rtc_set_time(dt_buf[1], dt_buf[0]);
+      // Write byte value in struct
+      time[idx_to_time[idx]] = ((val / 10) << 4) | (val % 10); // value in bcd format
+      rtc_set_time(dt_buf[1], dt_buf[0]);
 
-   	return;
+      return;
 
    usage:
-		shell_printf("20%02X/%02X/%02X %02X:%02X:%02X\r\n", time[6], time[5], time[4], time[2], time[1], time[0]);
-		shell_printf("usage: time {[%s] 0-99} or {b 0xYYMMDD 0xHHMMSS}\r\n", time_cmd);
+      shell_printf("20%02X/%02X/%02X %02X:%02X:%02X\r\n", time[6], time[5], time[4], time[2], time[1], time[0]);
+      shell_printf("usage: time {[%s] 0-99} or {b 0xYYMMDD 0xHHMMSS}\r\n", time_cmd);
    }
 #endif
 
 VNA_SHELL_FUNCTION(cmd_dac)
 {
-	int value;
-	if (argc < 1)
-	{
-		shell_printf("usage: dac {value(0-4095)}\r\n"\
+   int value;
+   if (argc < 1)
+   {
+      shell_printf("usage: dac {value(0-4095)}\r\n"\
                  "current value: %d\r\n", config.dac_value);
-		return;
-	}
-	value = my_atoui(argv[0]);
-	config.dac_value = value;
-	dacPutChannelX(&DACD2, 0, value);
+      return;
+   }
+   value = my_atoui(argv[0]);
+   config.dac_value = value;
+   dacPutChannelX(&DACD2, 0, value);
 }
 
 VNA_SHELL_FUNCTION(cmd_threshold)
 {
-	uint32_t value;
-	if (argc < 1)
-	{
-		shell_printf("usage: threshold {frequency in harmonic mode}\r\n"\
+   uint32_t value;
+   if (argc < 1)
+   {
+      shell_printf("usage: threshold {frequency in harmonic mode}\r\n"\
                  "current: %d\r\n", config.harmonic_freq_threshold);
-		return;
-	}
-	value = my_atoui(argv[0]);
-	config.harmonic_freq_threshold = value;
+      return;
+   }
+   value = my_atoui(argv[0]);
+   config.harmonic_freq_threshold = value;
 }
 
 VNA_SHELL_FUNCTION(cmd_saveconfig)
 {
-	(void)argc;
-	(void)argv;
-	config_save();
-	shell_printf("Config saved.\r\n");
+   (void)argc;
+   (void)argv;
+   config_save();
+   shell_printf("Config saved.\r\n");
 }
 
 VNA_SHELL_FUNCTION(cmd_clearconfig)
 {
-	if (argc < 1)
-	{
-		shell_printf("usage: clearconfig {protection key}\r\n");
-		return;
-	}
+   if (argc < 1)
+   {
+      shell_printf("usage: clearconfig {protection key}\r\n");
+      return;
+   }
 
-	if (strcmp(argv[0], "1234") != 0)
-	{
-		shell_printf("Key unmatched.\r\n");
-		return;
-	}
+   if (strcmp(argv[0], "1234") != 0)
+   {
+      shell_printf("Key unmatched.\r\n");
+      return;
+   }
 
-	clear_all_config_prop_data();
-	shell_printf("Config and all cal data cleared.\r\n"\
+   clear_all_config_prop_data();
+   shell_printf("Config and all cal data cleared.\r\n"\
                "Do reset manually to take effect. Then do touch cal and save.\r\n");
 }
 
@@ -976,50 +976,50 @@ VNA_SHELL_FUNCTION(cmd_sample)
   static const char cmd_sample_list[] = "gamma|ampl|ref";
 
   if (argc < 1)
-	  goto usage;
+     goto usage;
 
   switch (get_str_index(argv[0], cmd_sample_list))
   {
-	  case 0:
-		  sample_func = calculate_gamma;
-		  return;
-	  case 1:
-		  sample_func = fetch_amplitude;
-		  return;
-	  case 2:
-		  sample_func = fetch_amplitude_ref;
-		  return;
-	  default:
-		  break;
+     case 0:
+        sample_func = calculate_gamma;
+        return;
+     case 1:
+        sample_func = fetch_amplitude;
+        return;
+     case 2:
+        sample_func = fetch_amplitude_ref;
+        return;
+     default:
+        break;
   }
 
 usage:
-	shell_printf("usage: sample {%s}\r\n", cmd_sample_list);
+   shell_printf("usage: sample {%s}\r\n", cmd_sample_list);
 }
 
 #ifdef USE_INTEGRATOR
-	VNA_SHELL_FUNCTION(cmd_integrator)
-	{
-		static const char cmd_value_list[] = "off|on";
+   VNA_SHELL_FUNCTION(cmd_integrator)
+   {
+      static const char cmd_value_list[] = "off|on";
 
-		if (argc >= 1)
-		{
-			switch (get_str_index(argv[0], cmd_value_list))
-			{
-				case 0:	// off
-					config.integrator_coeff = 1.0f;
-					break;
-				case 1:	// on
-					config.integrator_coeff = INTEGRATOR_COEFF;
-					break;
-				default:
-					break;
-			}
-		}
+      if (argc >= 1)
+      {
+         switch (get_str_index(argv[0], cmd_value_list))
+         {
+            case 0:   // off
+               config.integrator_coeff = 1.0f;
+               break;
+            case 1:   // on
+               config.integrator_coeff = INTEGRATOR_COEFF;
+               break;
+            default:
+               break;
+         }
+      }
 
-		shell_printf("integrator %s\r\n", (config.integrator_coeff >= 1.0f) ? "off" : "on");
-		shell_printf("usage: integrator {%s}\r\n", cmd_value_list);
-	}
+      shell_printf("integrator %s\r\n", (config.integrator_coeff >= 1.0f) ? "off" : "on");
+      shell_printf("usage: integrator {%s}\r\n", cmd_value_list);
+   }
 #endif
 
 #if 1
@@ -1041,7 +1041,7 @@ usage:
       .bandwidth               = BANDWIDTH_2000,
       .current_id              = 0,
       .current_trace           = 0,
-		.integrator_coeff        = 1.0f,
+      .integrator_coeff        = 1.0f,
       .flags                   = 0;
    };
 #endif
@@ -1192,14 +1192,14 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode, bool no_cal)
    // Power stabilization after LED off, before measure
    int st_delay = 3;
 
-	#ifdef USE_INTEGRATOR
-   	//const float integrator_coeff = (config.integrator_coeff > 0.0f && config.integrator_coeff < 1.0f) ? config.integrator_coeff : 1.0f;		// 0.0 to 1.0
-   	const float integrator_coeff = config.integrator_coeff;
-	#endif
+   #ifdef USE_INTEGRATOR
+      //const float integrator_coeff = (config.integrator_coeff > 0.0f && config.integrator_coeff < 1.0f) ? config.integrator_coeff : 1.0f;      // 0.0 to 1.0
+      const float integrator_coeff = config.integrator_coeff;
+   #endif
 
    for (; p_sweep < sweep_points; p_sweep++)
    {   // 5300
-   	float gamma[2];
+      float gamma[2];
 
       if (frequencies[p_sweep] == 0)
          break;
@@ -1210,7 +1210,7 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode, bool no_cal)
       {
          if (SWEEP_CH0_MEASURE)
          {
-         	float *gamma_array = measured[0][p_sweep];
+            float *gamma_array = measured[0][p_sweep];
 
             tlv320aic3204_select(0);                   // CH0:REFLECTION, reset and begin measure
 
@@ -1229,24 +1229,24 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode, bool no_cal)
             if (cal_status & CALSTAT_APPLY && !no_cal)
                apply_CH0_error_term_at(gamma, p_sweep);
 
-				#ifdef USE_INTEGRATOR
-            {	// averager .. simple IIR filter
-           		gamma_array[0] = ((1.0f - integrator_coeff) * gamma_array[0]) + (integrator_coeff * gamma[0]);
-            	gamma_array[1] = ((1.0f - integrator_coeff) * gamma_array[1]) + (integrator_coeff * gamma[1]);
-				}
+            #ifdef USE_INTEGRATOR
+            {   // averager .. simple IIR filter
+                 gamma_array[0] = ((1.0f - integrator_coeff) * gamma_array[0]) + (integrator_coeff * gamma[0]);
+               gamma_array[1] = ((1.0f - integrator_coeff) * gamma_array[1]) + (integrator_coeff * gamma[1]);
+            }
             #else
             {
-            	gamma_array[0] = gamma[0];
-            	gamma_array[1] = gamma[1];
+               gamma_array[0] = gamma[0];
+               gamma_array[1] = gamma[1];
             }
-				#endif
+            #endif
          }
 
          if (SWEEP_CH1_MEASURE)
          {
-         	float *gamma_array = measured[1][p_sweep];
+            float *gamma_array = measured[1][p_sweep];
 
-         	tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
+            tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
 
             DSP_START(delay + st_delay);
 
@@ -1263,17 +1263,17 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode, bool no_cal)
             if (cal_status & CALSTAT_APPLY && !no_cal)
                apply_CH1_error_term_at(gamma, p_sweep);
 
-				#ifdef USE_INTEGRATOR
-            {	// averager .. simple IIR filter
-					gamma_array[0] = ((1.0f - integrator_coeff) * gamma_array[0]) + (integrator_coeff * gamma[0]);
-					gamma_array[1] = ((1.0f - integrator_coeff) * gamma_array[1]) + (integrator_coeff * gamma[1]);
-				}
+            #ifdef USE_INTEGRATOR
+            {   // averager .. simple IIR filter
+               gamma_array[0] = ((1.0f - integrator_coeff) * gamma_array[0]) + (integrator_coeff * gamma[0]);
+               gamma_array[1] = ((1.0f - integrator_coeff) * gamma_array[1]) + (integrator_coeff * gamma[1]);
+            }
             #else
             {
-            	gamma_array[0] = gamma[0];
-					gamma_array[1] = gamma[1];
+               gamma_array[0] = gamma[0];
+               gamma_array[1] = gamma[1];
             }
-				#endif
+            #endif
          }
       }
 
@@ -1294,37 +1294,37 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode, bool no_cal)
 
 uint32_t get_bandwidth_frequency(uint16_t bw_freq)
 {
-	return (AUDIO_ADC_FREQ / AUDIO_SAMPLES_COUNT) / (bw_freq + 1);
+   return (AUDIO_ADC_FREQ / AUDIO_SAMPLES_COUNT) / (bw_freq + 1);
 }
 
 void set_bandwidth(uint16_t bw_count)
 {
-	config.bandwidth = bw_count & 0x1FF;
-	redraw_request |= REDRAW_FREQUENCY;
+   config.bandwidth = bw_count & 0x1FF;
+   redraw_request |= REDRAW_FREQUENCY;
 }
 
 VNA_SHELL_FUNCTION(cmd_bandwidth)
 {
-	int user_bw;
-	if (argc == 1)
-		user_bw = my_atoui(argv[0]);
-	else
-	if (argc >= 2)
-	{
-		int f = my_atoui(argv[0]);
-		if (f > MAX_BANDWIDTH) user_bw = 0;
-		else
-		if (f < MIN_BANDWIDTH) user_bw = 511;
-		else
-			user_bw = ((AUDIO_ADC_FREQ + AUDIO_SAMPLES_COUNT / 2) / AUDIO_SAMPLES_COUNT) / f - 1;
-	}
-	else
-		goto result;
+   int user_bw;
+   if (argc == 1)
+      user_bw = my_atoui(argv[0]);
+   else
+   if (argc >= 2)
+   {
+      int f = my_atoui(argv[0]);
+      if (f > MAX_BANDWIDTH) user_bw = 0;
+      else
+      if (f < MIN_BANDWIDTH) user_bw = 511;
+      else
+         user_bw = ((AUDIO_ADC_FREQ + AUDIO_SAMPLES_COUNT / 2) / AUDIO_SAMPLES_COUNT) / f - 1;
+   }
+   else
+      goto result;
 
-	set_bandwidth(user_bw);
+   set_bandwidth(user_bw);
 
 result:
-	shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency(config.bandwidth));
+   shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency(config.bandwidth));
 }
 
 #ifdef POINTS_SET_51
@@ -1470,22 +1470,22 @@ VNA_SHELL_FUNCTION(cmd_scan)
    sweep(false, sweep_mode, no_sweep_cal);
 
    if (!bin_mode)
-   {	// Output data after if set (faster data recive)
-   	if (mask)
-   	{
-   		for (i = 0; i < points; i++)
-   		{
-   			if (mask & 1) shell_printf("%u ", frequencies[i]);
-   			if (mask & 2) shell_printf("%+f %+f ", measured[0][i][0], measured[0][i][1]);
-   			if (mask & 4) shell_printf("%+f %+f ", measured[1][i][0], measured[1][i][1]);
-   			shell_printf("\r\n");
-   		}
-   	}
+   {   // Output data after if set (faster data recive)
+      if (mask)
+      {
+         for (i = 0; i < points; i++)
+         {
+            if (mask & 1) shell_printf("%u ", frequencies[i]);
+            if (mask & 2) shell_printf("%+f %+f ", measured[0][i][0], measured[0][i][1]);
+            if (mask & 4) shell_printf("%+f %+f ", measured[1][i][0], measured[1][i][1]);
+            shell_printf("\r\n");
+         }
+      }
    }
    else
-   {	// binary mode
+   {   // binary mode
 
-   	// 2-bytes .. mask
+      // 2-bytes .. mask
       streamWrite(shell_stream, (void *)&mask, 2);
 
       // 2 bytes .. number of scatter points to follow
@@ -1834,18 +1834,18 @@ static void eterm_calc_es(void)
     const float s11si = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
 
     {
-   	 // Es = (S11mo'/s11ao + S11ms’)/(S11mo' - S11ms’)
+       // Es = (S11mo'/s11ao + S11ms’)/(S11mo' - S11ms’)
 
-   	 const float numr = s11sr + (s11or * s11aor) - (s11oi * s11aoi);
-   	 const float numi = s11si + (s11oi * s11aor) + (s11or * s11aoi);
+       const float numr = s11sr + (s11or * s11aor) - (s11oi * s11aoi);
+       const float numi = s11si + (s11oi * s11aor) + (s11or * s11aoi);
 
-   	 const float denomr = s11or - s11sr;
-   	 const float denomi = s11oi - s11si;
+       const float denomr = s11or - s11sr;
+       const float denomi = s11oi - s11si;
 
-   	 const float sq = (denomr * denomr) + (denomi * denomi);
+       const float sq = (denomr * denomr) + (denomi * denomi);
 
-   	 cal_data[ETERM_ES][i][0] = ((numr * denomr) + (numi * denomi)) / sq;
-   	 cal_data[ETERM_ES][i][1] = ((numi * denomr) - (numr * denomi)) / sq;
+       cal_data[ETERM_ES][i][0] = ((numr * denomr) + (numi * denomi)) / sq;
+       cal_data[ETERM_ES][i][1] = ((numi * denomr) - (numr * denomi)) / sq;
     }
   }
 
@@ -1977,7 +1977,7 @@ static void apply_error_term_at(int i)
 //static void apply_CH0_error_term_at(int i)
 static void apply_CH0_error_term_at(float gamma[2], int i)
 {
-//	float *gamma   = measured[0][i];
+//   float *gamma   = measured[0][i];
    // S11m' = S11m - Ed
    // S11a = S11m' / (Er + Es S11m')
    const float mr = gamma[0] - cal_data[ETERM_ED][i][0];
@@ -1994,50 +1994,50 @@ static void apply_CH0_error_term_at(float gamma[2], int i)
 //static void apply_CH1_error_term_at(int i)
 static void apply_CH1_error_term_at(float gamma[2], int i)
 {
-//	float *gamma   = measured[1][i];
+//   float *gamma   = measured[1][i];
    // CAUTION: Et is inversed for efficiency
    // S21a = (S21m - Ex) * Et
    const float mr = gamma[0] - cal_data[ETERM_EX][i][0];
    const float mi = gamma[1] - cal_data[ETERM_EX][i][1];
    // Not made CH1 correction by CH0 data
-	const float cr = cal_data[ETERM_ET][i][0];
-	const float ci = cal_data[ETERM_ET][i][1];
+   const float cr = cal_data[ETERM_ET][i][0];
+   const float ci = cal_data[ETERM_ET][i][1];
    gamma[0]       = (mr * cr) - (mi * ci);
    gamma[1]       = (mi * cr) + (mr * ci);
 }
 
 static void apply_edelay(void)
 {
-	const uint16_t sweep_mode = get_sweep_mode();
+   const uint16_t sweep_mode = get_sweep_mode();
 
-	int i;
-	for (i = 0; i < sweep_points; i++)
-	{
-		const float w = (float)(2 * VNA_PI * 1e-12) * electrical_delay * frequencies[i];
+   int i;
+   for (i = 0; i < sweep_points; i++)
+   {
+      const float w = (float)(2 * VNA_PI * 1e-12) * electrical_delay * frequencies[i];
 
-		#if 0
-			const float s = sinf(w);
-			const float c = cosf(w);
-		#else
-			float s, c;
-			arm_sin_cos_f32(w, &s, &c);
-		#endif
+      #if 0
+         const float s = sinf(w);
+         const float c = cosf(w);
+      #else
+         float s, c;
+         arm_sin_cos_f32(w, &s, &c);
+      #endif
 
-		if (sweep_mode & SWEEP_CH0_MEASURE)
-		{
-			const float real = measured[0][i][0];
-			const float imag = measured[0][i][1];
-			measured[0][i][0] = (real * c) - (imag * s);
-			measured[0][i][1] = (imag * c) + (real * s);
-		}
-		if (sweep_mode & SWEEP_CH1_MEASURE)
-		{
-			const float real = measured[1][i][0];
-			const float imag = measured[1][i][1];
-			measured[1][i][0] = (real * c) - (imag * s);
-			measured[1][i][1] = (imag * c) + (real * s);
-		}
-	}
+      if (sweep_mode & SWEEP_CH0_MEASURE)
+      {
+         const float real = measured[0][i][0];
+         const float imag = measured[0][i][1];
+         measured[0][i][0] = (real * c) - (imag * s);
+         measured[0][i][1] = (imag * c) + (real * s);
+      }
+      if (sweep_mode & SWEEP_CH1_MEASURE)
+      {
+         const float real = measured[1][i][0];
+         const float imag = measured[1][i][1];
+         measured[1][i][0] = (real * c) - (imag * s);
+         measured[1][i][1] = (imag * c) + (real * s);
+      }
+   }
 }
 
 void cal_collect(int type)
@@ -2433,89 +2433,89 @@ float get_trace_refpos(int t)
 
 VNA_SHELL_FUNCTION(cmd_trace)
 {
-	int t;
+   int t;
 
-	if (argc <= 0)
-	{
-		for (t = 0; t < TRACES_MAX; t++)
-		{
-			if (trace[t].enabled)
-			{
-				const char *type = get_trace_typename(t);
-				const char *channel = trc_channel_name[trace[t].channel];
-				const float scale = get_trace_scale(t);
-				const float refpos = get_trace_refpos(t);
-				shell_printf("%d %s %s %+f %+f\r\n", t, type, channel, scale, refpos);
-			}
-		}
-		return;
-	}
+   if (argc <= 0)
+   {
+      for (t = 0; t < TRACES_MAX; t++)
+      {
+         if (trace[t].enabled)
+         {
+            const char *type = get_trace_typename(t);
+            const char *channel = trc_channel_name[trace[t].channel];
+            const float scale = get_trace_scale(t);
+            const float refpos = get_trace_refpos(t);
+            shell_printf("%d %s %s %+f %+f\r\n", t, type, channel, scale, refpos);
+         }
+      }
+      return;
+   }
 
-	if (strcmp(argv[0], "all") == 0 && argc > 1 && strcmp(argv[1], "off") == 0)
-	{
-		for (t = 0; t < TRACES_MAX; t++)
-			set_trace_type(t, TRC_OFF);
-		goto exit;
-	}
+   if (strcmp(argv[0], "all") == 0 && argc > 1 && strcmp(argv[1], "off") == 0)
+   {
+      for (t = 0; t < TRACES_MAX; t++)
+         set_trace_type(t, TRC_OFF);
+      goto exit;
+   }
 
-	t = my_atoi(argv[0]);
-	if (t < 0 || t >= TRACES_MAX)
-		goto usage;
+   t = my_atoi(argv[0]);
+   if (t < 0 || t >= TRACES_MAX)
+      goto usage;
 
-	if (argc == 1)
-	{
-		const char *type = get_trace_typename(t);
-		const char *channel = trc_channel_name[trace[t].channel];
-		shell_printf("%d %s %s\r\n", t, type, channel);
-		return;
-	}
+   if (argc == 1)
+   {
+      const char *type = get_trace_typename(t);
+      const char *channel = trc_channel_name[trace[t].channel];
+      shell_printf("%d %s %s\r\n", t, type, channel);
+      return;
+   }
 
-	#if (MAX_TRACE_TYPE != 12)
-		#error "Trace type enum possibly changed, check cmd_trace function"
-	#endif
+   #if (MAX_TRACE_TYPE != 12)
+      #error "Trace type enum possibly changed, check cmd_trace function"
+   #endif
 
-	// enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_Q, TRC_OFF
-	static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|q|off";
-	int type = get_str_index(argv[1], cmd_type_list);
-	if (type >= 0)
-	{
-		set_trace_type(t, type);
-		goto check_ch_num;
-	}
+   // enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_Q, TRC_OFF
+   static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|q|off";
+   int type = get_str_index(argv[1], cmd_type_list);
+   if (type >= 0)
+   {
+      set_trace_type(t, type);
+      goto check_ch_num;
+   }
 
-	//                                            0      1
-	static const char cmd_scale_ref_list[] = "scale|refpos";
-	if (argc >= 3)
-	{
-		switch (get_str_index(argv[1], cmd_scale_ref_list))
-		{
-			case 0:
-				//trace[t].scale = my_atof(argv[2]);
-				set_trace_scale(t, my_atof(argv[2]));
-				goto exit;
-			case 1:
-				//trace[t].refpos = my_atof(argv[2]);
-				set_trace_refpos(t, my_atof(argv[2]));
-				goto exit;
-			default:
-				goto usage;
-		}
-	}
+   //                                            0      1
+   static const char cmd_scale_ref_list[] = "scale|refpos";
+   if (argc >= 3)
+   {
+      switch (get_str_index(argv[1], cmd_scale_ref_list))
+      {
+         case 0:
+            //trace[t].scale = my_atof(argv[2]);
+            set_trace_scale(t, my_atof(argv[2]));
+            goto exit;
+         case 1:
+            //trace[t].refpos = my_atof(argv[2]);
+            set_trace_refpos(t, my_atof(argv[2]));
+            goto exit;
+         default:
+            goto usage;
+      }
+   }
 
 check_ch_num:
-	if (argc > 2)
-	{
-		const int src = my_atoi(argv[2]);
-		if (src != 0 && src != 1)
-			goto usage;
-		trace[t].channel = src;
-	}
+   if (argc > 2)
+   {
+      const int src = my_atoi(argv[2]);
+      if (src != 0 && src != 1)
+         goto usage;
+      trace[t].channel = src;
+   }
 
 exit:
-	return;
+   return;
 
 usage:
-	shell_printf("trace {0|1|2|3|all} [%s] [src]\r\ntrace {0|1|2|3} {%s} {value}\r\n", cmd_type_list, cmd_scale_ref_list);
+   shell_printf("trace {0|1|2|3|all} [%s] [src]\r\ntrace {0|1|2|3} {%s} {value}\r\n", cmd_type_list, cmd_scale_ref_list);
 }
 
 
@@ -2536,12 +2536,12 @@ float get_electrical_delay(void)
 
 VNA_SHELL_FUNCTION(cmd_edelay)
 {
-	if (argc < 1)
-	{
-		shell_printf("%+f\r\n", electrical_delay);
-		return;
-	}
-	set_electrical_delay(my_atof(argv[0]));
+   if (argc < 1)
+   {
+      shell_printf("%+f\r\n", electrical_delay);
+      return;
+   }
+   set_electrical_delay(my_atof(argv[0]));
 }
 
 VNA_SHELL_FUNCTION(cmd_marker)
@@ -2617,53 +2617,53 @@ VNA_SHELL_FUNCTION(cmd_marker)
 }
 
 #ifdef ENABLE_TOUCH_COMMAND
-	VNA_SHELL_FUNCTION(cmd_touchcal)
-	{
-		(void)argc;
-		(void)argv;
-		//extern int16_t touch_cal[4];
-		int i;
+   VNA_SHELL_FUNCTION(cmd_touchcal)
+   {
+      (void)argc;
+      (void)argv;
+      //extern int16_t touch_cal[4];
+      int i;
 
-		shell_printf("first touch upper left, then lower right...");
-		touch_cal_exec();
-		shell_printf("done\r\n");
+      shell_printf("first touch upper left, then lower right...");
+      touch_cal_exec();
+      shell_printf("done\r\n");
 
-		shell_printf("touch cal params: ");
-		for (i = 0; i < 4; i++)
-			shell_printf("%d ", config.touch_cal[i]);
-		shell_printf("\r\n");
-	}
+      shell_printf("touch cal params: ");
+      for (i = 0; i < 4; i++)
+         shell_printf("%d ", config.touch_cal[i]);
+      shell_printf("\r\n");
+   }
 
-	VNA_SHELL_FUNCTION(cmd_touchtest)
-	{
-		(void)argc;
-		(void)argv;
-		do touch_draw_test();
-		while (argc);
-	}
+   VNA_SHELL_FUNCTION(cmd_touchtest)
+   {
+      (void)argc;
+      (void)argv;
+      do touch_draw_test();
+      while (argc);
+   }
 #endif
 
 VNA_SHELL_FUNCTION(cmd_frequencies)
 {
-	(void)argc;
-	(void)argv;
+   (void)argc;
+   (void)argv;
 
-	int i;
-	for (i = 0; i < sweep_points; i++)
-	{
-		if (frequencies[i] != 0)
-			shell_printf("%u\r\n", frequencies[i]);
-	}
+   int i;
+   for (i = 0; i < sweep_points; i++)
+   {
+      if (frequencies[i] != 0)
+         shell_printf("%u\r\n", frequencies[i]);
+   }
 }
 
 static void set_domain_mode(uint8_t mode) // accept DOMAIN_FREQ or DOMAIN_TIME
 {
-	if (mode != (domain_mode & DOMAIN_MODE))
-	{
-		domain_mode = (domain_mode & ~DOMAIN_MODE) | (mode & DOMAIN_MODE);
-		redraw_request |= REDRAW_FREQUENCY;
-		uistat.lever_mode = LM_MARKER;
-	}
+   if (mode != (domain_mode & DOMAIN_MODE))
+   {
+      domain_mode = (domain_mode & ~DOMAIN_MODE) | (mode & DOMAIN_MODE);
+      redraw_request |= REDRAW_FREQUENCY;
+      uistat.lever_mode = LM_MARKER;
+   }
 }
 
 static void
@@ -3075,9 +3075,9 @@ static const VNAShellCommand commands[] =
    {"power"            , cmd_power       , 0},
    {"sample"           , cmd_sample      , 0},
    #ifdef USE_INTEGRATOR
-		{"integrator"    , cmd_integrator  , 0},
+      {"integrator"    , cmd_integrator  , 0},
    #endif
-	#ifdef ENABLE_GAMMA_COMMAND
+   #ifdef ENABLE_GAMMA_COMMAND
       {"gamma"         , cmd_gamma       , 0},
    #endif
    {"scan_bin"         , cmd_scan_bin    , CMD_WAIT_MUTEX},
@@ -3087,10 +3087,10 @@ static const VNAShellCommand commands[] =
       {"test"          , cmd_test        , 0},
    #endif
    #ifdef ENABLE_TOUCH_COMMAND
-		{"touchcal"      , cmd_touchcal    , CMD_WAIT_MUTEX},
-   	{"touchtest"     , cmd_touchtest   , CMD_WAIT_MUTEX},
-	#endif
-	{"pause"            , cmd_pause       , 0},
+      {"touchcal"      , cmd_touchcal    , CMD_WAIT_MUTEX},
+      {"touchtest"     , cmd_touchtest   , CMD_WAIT_MUTEX},
+   #endif
+   {"pause"            , cmd_pause       , 0},
    {"resume"           , cmd_resume      , 0},
    {"cal"              , cmd_cal         , CMD_WAIT_MUTEX},
    {"save"             , cmd_save        , 0},
@@ -3211,14 +3211,14 @@ static void VNAShell_executeLine(char *line)
   if (shell_nargs == 0) return;
 
   {  // make the incoming command lower case
-	  lp = shell_args[0];
-	  char c;
-	  while ((c = *lp) != 0)
-	  {
-		  if (c >= 'A' && c <= 'Z')
-			 c += 'a' - 'A';	// make lower case
-		  *lp++ = c;
-	  }
+     lp = shell_args[0];
+     char c;
+     while ((c = *lp) != 0)
+     {
+        if (c >= 'A' && c <= 'Z')
+          c += 'a' - 'A';   // make lower case
+        *lp++ = c;
+     }
   }
 
   // Execute line
