@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-4 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-5 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -336,6 +336,31 @@ static void transform_domain(void)
          break;
    }
 
+   // recalculate the scale factor if any window details are changed.
+   // the scale factor is to compensate for windowing.
+   if (window_td_func != td_func || window_size_scale != window_size || window_beta_scale != beta)
+   {
+   	window_size_scale = window_size;
+   	window_beta_scale = beta;
+   	window_td_func    = td_func;
+    	window_scale      = 1.0f;
+
+   	if (td_func != TD_FUNC_LOWPASS_STEP)
+   	{
+   		window_scale = 0.0f;
+   		for (i = 0; i < window_size; i++)
+   		{
+   			const float w = kaiser_window(i + offset, window_size, beta);
+   			window_scale += w;
+   		}
+   		window_scale *= 1.0f / window_size;
+   		window_scale  = 1.0f / window_scale;
+
+   		if (td_func == TD_FUNC_BANDPASS)
+				window_scale *= 4.0f;	// hmmm, should be 2 not 4
+     	}
+	}
+
    uint16_t ch_mask = get_sweep_mode();
 
    for (ch = 0; ch < 2; ch++, ch_mask >>= 1)
@@ -344,33 +369,6 @@ static void transform_domain(void)
          continue;
 
       memcpy(tmp, measured[ch], sizeof(measured[0]));
-
-      // recalculate the scale factor if any window details are changed.
-      // the scale factor is to compensate for windowing.
-      if (window_td_func != td_func || window_size_scale != window_size || window_beta_scale != beta)
-      {
-      	window_size_scale = window_size;
-      	window_beta_scale = beta;
-      	window_td_func    = td_func;
-      	window_scale      = 1.0f;
-
-      	if (td_func != TD_FUNC_LOWPASS_STEP)
-      	{
-      		window_scale = 0;
-      		for (i = 0; i < window_size; i++)
-      		{
-      			const float w = kaiser_window(i + offset, window_size, beta);
-      			window_scale += w;
-      		}
-      		window_scale *= 1.0f / FFT_SIZE;
-      		window_scale = 1.0f / window_scale;
-
-//				if (td_func == TD_FUNC_BANDPASS)
-//					window_scale *= 2.0f;
-      		if (td_func != TD_FUNC_BANDPASS)
-      			window_scale *= 0.5f;
-      	}
-		}
 
 		for (i = 0; i < POINTS_COUNT; i++)
       {
