@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-8 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-9 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -288,7 +288,7 @@ static float kaiser_window(int k, int n, float beta)
    const float r = ((float)(2 * k) / (n - 1)) - 1.0f;
    return bessel0(beta * sqrtf(1.0f - (r * r))) / bessel0(beta);
 }
-
+/*
 static void transform_domain(void)
 {
    int ch;
@@ -380,6 +380,109 @@ static void transform_domain(void)
 
       fft256_inverse((float(*)[2])tmp);
 
+      memcpy(measured[ch], tmp, sizeof(measured[ch]));
+
+      if (td_func == TD_FUNC_LOWPASS_STEP)
+      {
+         for (i = 1; i < sweep_points; i++)
+         {  // convolve
+            measured[ch][i][0] += measured[ch][i - 1][0];
+            measured[ch][i][1] += measured[ch][i - 1][1];
+         }
+      }
+   }
+}
+*/
+static void transform_domain(void)
+{  // this version creates and saves the window values in the upper part of the temp buffer
+   // this means that we compute the window values just the oncee instead of twice if both S11 and S21 are TDR'ed
+   // this also uses up less flash area for the code
+
+   int ch;
+   int i;
+
+   // use spi_buffer as temporary buffer
+   // and calculate ifft for time domain
+   float *tmp = (float *)spi_buffer;
+
+   const uint8_t td_window = domain_mode & TD_WINDOW;
+   const uint8_t td_func   = domain_mode & TD_FUNC;
+
+   float beta = 0.0f;
+   switch (td_window)
+   {
+      case TD_WINDOW_MINIMUM: beta =  0.0f; break;
+      case TD_WINDOW_NORMAL:  beta =  6.0f; break;
+      case TD_WINDOW_MAXIMUM: beta = 13.0f; break;
+   }
+
+   uint16_t offset      = 0;
+   uint16_t window_size = sweep_points;
+   switch (td_func)
+   {
+      case TD_FUNC_BANDPASS:
+         offset      = 0;
+         window_size = sweep_points;
+         break;
+      case TD_FUNC_LOWPASS_IMPULSE:
+      case TD_FUNC_LOWPASS_STEP:
+         offset      = sweep_points;
+         window_size = sweep_points * 2;
+         break;
+   }
+
+   // calculate the window scale factor - compensates for window loss/gain
+   for (i = 0; i < sweep_points; i++)
+      tmp[(FFT_SIZE * 2) + i] = kaiser_window(i + offset, window_size, beta);
+   float window_scale = 1.0f;
+   if (td_func != TD_FUNC_LOWPASS_STEP)
+   {
+   	window_scale = 0.0f;
+   	for (i = 0; i < sweep_points; i++)
+   		window_scale += tmp[(FFT_SIZE * 2) + i];
+   	window_scale = (float)(FFT_SIZE / 2) / window_scale;
+   	if (td_func == TD_FUNC_BANDPASS)
+   		window_scale *= 2;
+   }
+
+   const float scale = window_scale / FFT_SIZE;   // save time by scaling the input values rather than an additional scaling run after the FFT
+
+   uint16_t ch_mask = get_sweep_mode();
+
+   for (ch = 0; ch < 2; ch++, ch_mask >>= 1)
+   {
+      if ((ch_mask & 1) == 0)
+         continue;
+
+      memcpy(tmp, measured[ch], sizeof(measured[ch]));
+
+      // window the input samples
+      for (i = 0; i < sweep_points; i++)
+      {
+         const float w = tmp[(FFT_SIZE * 2) + i] * scale;
+         tmp[(i * 2) + 0] *= w;
+         tmp[(i * 2) + 1] *= w;
+      }
+      // zero pad
+      for (i = sweep_points; i < FFT_SIZE; i++)
+      {
+         tmp[(i * 2) + 0] = 0.0f;
+         tmp[(i * 2) + 1] = 0.0f;
+      }
+
+      if (td_func == TD_FUNC_LOWPASS_IMPULSE || td_func == TD_FUNC_LOWPASS_STEP)
+      {  // low pass
+         for (i = 1; i < sweep_points; i++)
+         {  // conjugate
+            tmp[((FFT_SIZE - i) * 2) + 0] =  tmp[(i * 2) + 0];
+            tmp[((FFT_SIZE - i) * 2) + 1] = -tmp[(i * 2) + 1];
+         }
+      }
+
+      // inverse FFT
+      fft256_inverse((float(*)[2])tmp);
+
+      // fetch the results
       memcpy(measured[ch], tmp, sizeof(measured[ch]));
 
       if (td_func == TD_FUNC_LOWPASS_STEP)
