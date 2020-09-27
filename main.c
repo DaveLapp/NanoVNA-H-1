@@ -289,11 +289,6 @@ static float kaiser_window(int k, int n, float beta)
    return bessel0(beta * sqrtf(1.0f - (r * r))) / bessel0(beta);
 }
 
-float   window_beta_scale = -1.0f;
-int     window_size_scale = 0;
-uint8_t window_td_func    = -1;
-float   window_scale      = 1.0f;
-
 static void transform_domain(void)
 {
    int ch;
@@ -339,21 +334,23 @@ static void transform_domain(void)
 
    // recalculate the scale factor if any window details are changed.
    // the scale factor is to compensate for windowing.
-   if (window_td_func != td_func || window_size_scale != window_size || window_beta_scale != beta)
+   static uint8_t  td_func_cache     = -1;
+   static uint16_t window_size_cache = 0;
+   static float    beta_cache        = -1.0f;
+   static float    window_scale      = 1.0f;
+   if (td_func_cache != td_func || window_size_cache != window_size || beta_cache != beta)
    {
-   	window_size_scale = window_size;
-   	window_beta_scale = beta;
-   	window_td_func    = td_func;
+   	td_func_cache     = td_func;
+   	window_size_cache = window_size;
+   	beta_cache        = beta;
     	window_scale      = 1.0f;
 
    	if (td_func != TD_FUNC_LOWPASS_STEP)
    	{
+         // compute the average window value
    		window_scale = 0.0f;
    		for (i = 0; i < sweep_points; i++)
-   		{
-   			const float w = kaiser_window(i + offset, window_size, beta);
-   			window_scale += w;
-   		}
+   			window_scale += kaiser_window(i + offset, window_size, beta);
    		window_scale /= sweep_points;
 
    		window_scale = 1.0f / window_scale;
