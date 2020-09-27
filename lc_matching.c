@@ -192,30 +192,19 @@
          return;
       }
 
+      char type;
+      float value;
       if (X < 0.0f)
       {
-         const float c = 1.0f / (2.0f * VNA_PI * FHz * -X);
-         if (c >= 1e0f)   plot_printf(str, str_size, "%6.2f F ", c * 1e0f);
-         else
-         if (c >= 1e-3f)  plot_printf(str, str_size, "%6.2f mF", c * 1e3f);
-         else
-         if (c >= 1e-6f)  plot_printf(str, str_size, "%6.2f uF", c * 1e6f);
-         else
-         if (c >= 1e-9f)  plot_printf(str, str_size, "%6.2f nF", c * 1e9f);
-         else
-            plot_printf(str, str_size, "%6.2f pF", c * 1e12f);
+      	type = 'F';
+      	value = 1.0f / (2.0f * VNA_PI * FHz * -X);
       }
       else
       {
-         const float l = X / (2.0f * VNA_PI * FHz);
-         if (l >= 1e0f)    plot_printf(str, str_size, "%6.2f H ", l * 1e0f);
-         else
-         if (l >= 1e-3f)   plot_printf(str, str_size, "%6.2f mH", l * 1e3f);
-         else
-         if (l >= 1e-6f)   plot_printf(str, str_size, "%6.2f uH", l * 1e6f);
-         else
-            plot_printf(str, str_size, "%6.2f nH", l * 1e9f);
+      	type = 'H';
+      	value =    X / (2.0f * VNA_PI * FHz);
       }
+      plot_printf(str, str_size, "%4.2F%c", value, type);
    }
 
    extern void cell_drawstring(char *str, int x, int y, bool fixed_pitch);
@@ -292,7 +281,7 @@
 
    int lc_match_process(void)
    {
-        memset(&lc_match_array, 0, sizeof(lc_match_array));
+      memset(&lc_match_array, 0, sizeof(lc_match_array));
 
       if (!(config.flags & CONFIG_FLAGS_LC_MATCH))
          return -1;
@@ -320,8 +309,8 @@
       impedance(coeff, &lc_match_array.RL, &lc_match_array.XL, lc_match_array.R0);
 
       // compute the possible LC matches
-        lc_match_array.num_matches = (lc_match_array.Hz > 0) ? lc_match_calc(lc_match_array.RL, lc_match_array.XL, lc_match_array.matches, lc_match_array.R0) : 0;
+      lc_match_array.num_matches = (lc_match_array.Hz > 0) ? lc_match_calc(lc_match_array.RL, lc_match_array.XL, lc_match_array.matches, lc_match_array.R0) : 0;
 
-        return lc_match_array.num_matches;
+      return lc_match_array.num_matches;
    }
 #endif
