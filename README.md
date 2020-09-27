@@ -9,6 +9,9 @@ NanoVNA - Very tiny handheld Vector Network Analyzer
 <div align="center">
 <img src="/doc/nanovna.jpg" width="480px">
 </div>
+<div align="center">
+<img src="/NanoVNA1.png">
+</div>
 
 # About
 
