@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-3 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.27-4 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -289,6 +289,11 @@ static float kaiser_window(int k, int n, float beta)
    return bessel0(beta * sqrtf(1.0f - (r * r))) / bessel0(beta);
 }
 
+float   window_beta_scale = -1.0f;
+int     window_size_scale = 0;
+uint8_t window_td_func    = -1;
+float   window_scale      = 1.0f;
+
 static void transform_domain(void)
 {
    int ch;
@@ -298,37 +303,33 @@ static void transform_domain(void)
    // and calculate ifft for time domain
    float *tmp = (float *)spi_buffer;
 
-   float beta    = 0.0f;
-   float win_corr = 1.0f;
+   float beta = 0.0f;
    switch (domain_mode & TD_WINDOW)
    {
       case TD_WINDOW_MINIMUM:
       	//beta = 0.0f;  // this is rectangular
-   		win_corr = (float)FFT_SIZE / (2 * POINTS_COUNT);		// loss by zero-padding 202 to 256 points
          break;
       case TD_WINDOW_NORMAL:
       	beta = 6.0f;
-         win_corr = (FFT_SIZE * 2.01f) / (2 * POINTS_COUNT);	// additional window loss: 1.0 / mean(kaiser(202, 6)) = 2.01
          break;
       case TD_WINDOW_MAXIMUM:
          beta = 13.0f;
-         win_corr = (FFT_SIZE * 2.92f) / (2 * POINTS_COUNT);	// additional window loss: 1.0 / mean(kaiser(202, 13)) = 2.92
          break;
    }
 
-   uint16_t window_size = POINTS_COUNT;
+  	const uint8_t td_func = domain_mode & TD_FUNC;
+
+  	uint16_t window_size = POINTS_COUNT;
    uint16_t offset      = 0;
    uint8_t is_lowpass   = FALSE;
-   switch (domain_mode & TD_FUNC)
+   switch (td_func)
    {
       case TD_FUNC_BANDPASS:
          offset      = 0;
          window_size = POINTS_COUNT;
-         win_corr *= 2.0f;						// window size is half the size as assumed above => twice the IFFT loss
          break;
-      case TD_FUNC_LOWPASS_STEP:
-         win_corr = 1.0f;						// no IFFT losses need to be considered to calculate the step response
       case TD_FUNC_LOWPASS_IMPULSE:
+      case TD_FUNC_LOWPASS_STEP:
          is_lowpass  = TRUE;
          offset      = POINTS_COUNT;
          window_size = POINTS_COUNT * 2;
@@ -344,9 +345,36 @@ static void transform_domain(void)
 
       memcpy(tmp, measured[ch], sizeof(measured[0]));
 
-      for (i = 0; i < POINTS_COUNT; i++)
+      // recalculate the scale factor if any window details are changed.
+      // the scale factor is to compensate for windowing.
+      if (window_td_func != td_func || window_size_scale != window_size || window_beta_scale != beta)
       {
-         const float w = kaiser_window(i + offset, window_size, beta) * win_corr;
+      	window_size_scale = window_size;
+      	window_beta_scale = beta;
+      	window_td_func    = td_func;
+      	window_scale      = 1.0f;
+
+      	if (td_func != TD_FUNC_LOWPASS_STEP)
+      	{
+      		window_scale = 0;
+      		for (i = 0; i < window_size; i++)
+      		{
+      			const float w = kaiser_window(i + offset, window_size, beta);
+      			window_scale += w;
+      		}
+      		window_scale *= 1.0f / FFT_SIZE;
+      		window_scale = 1.0f / window_scale;
+
+//				if (td_func == TD_FUNC_BANDPASS)
+//					window_scale *= 2.0f;
+      		if (td_func != TD_FUNC_BANDPASS)
+      			window_scale *= 0.5f;
+      	}
+		}
+
+		for (i = 0; i < POINTS_COUNT; i++)
+      {
+         const float w = kaiser_window(i + offset, window_size, beta) * window_scale;
          tmp[i * 2 + 0] *= w;
          tmp[i * 2 + 1] *= w;
       }
