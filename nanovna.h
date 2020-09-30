@@ -58,7 +58,10 @@
 #define MENU_THEME_WHITE
 
 // allow the user to turn the background grid on/off
-#define USE_GRID_ENABLE
+//#define USE_GRID_ENABLE
+
+// Use buildin table for sin/cos calculation, allow save a lot of flash space (this table also use for FFT), max sin/cos error = 4e-7
+#define __VNA_USE_MATH_TABLES__
 
 // ****************************
 
@@ -137,7 +140,7 @@ extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
 //#define CAL_MAGIC     0x434f4e45 // 'CONF'
 #define CAL_MAGIC       0x80196208
 
-extern uint32_t updateCRC32(uint32_t crc, const void *data, const int len);
+extern uint32_t updateCRC32(const void *data, const int len);
 
 // ******************************
 

@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.27-10 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.30-2 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -289,7 +289,7 @@ static float kaiser_window(int k, int n, float beta)
    return bessel0(beta * sqrtf(1.0f - (r * r))) / bessel0(beta);
 }
 
-#if ((FFT_SIZE * 8) <= (SPI_BUFFER_SIZE * 2))
+#if ((FFT_SIZE * 4 * 2) <= ((SPI_BUFFER_SIZE * 2) / 2))
 static void transform_domain(void)
 {
    int ch;
@@ -325,11 +325,11 @@ static void transform_domain(void)
          break;
    }
 
-   // recalculate the scale factor if any window settings are changed.
-   // the scale factor is to compensate for windowing.
+   // recalculate the scale factor if any window settings have changed.
+   // the scale factor compensates for window loss/gain.
    static float    window_scale;
    static uint16_t td_cache = 0;
-   const uint16_t  td_check = (sweep_points << 5) | td_window | td_func;
+   const  uint16_t td_check = (sweep_points << 5) | td_window | td_func;
    if (td_cache != td_check)
    {  // window settings have changed
       td_cache = td_check;
@@ -348,7 +348,7 @@ static void transform_domain(void)
 
    uint16_t ch_mask = get_sweep_mode();
 
-   const float scale = window_scale / FFT_SIZE;
+   const float scale = window_scale / FFT_SIZE;   // save time by scaling the input values rather than an additional scaling run after the FFT
 
    for (ch = 0; ch < 2; ch++, ch_mask >>= 1)
    {
@@ -357,13 +357,14 @@ static void transform_domain(void)
 
       memcpy(tmp, measured[ch], sizeof(measured[ch]));
 
+      // window the input samples
       for (i = 0; i < sweep_points; i++)
       {
          const float w = kaiser_window(i + offset, window_size, beta) * scale;
          tmp[(i * 2) + 0] *= w;
          tmp[(i * 2) + 1] *= w;
       }
-
+      // zero pad
       for (i = sweep_points; i < FFT_SIZE; i++)
       {
          tmp[(i * 2) + 0] = 0.0f;
@@ -379,8 +380,10 @@ static void transform_domain(void)
          }
       }
 
-      fft256_inverse((float(*)[2])tmp);
+      // inverse FFT
+      fft_inverse((float(*)[2])tmp);
 
+      // fetch the results
       memcpy(measured[ch], tmp, sizeof(measured[ch]));
 
       if (td_func == TD_FUNC_LOWPASS_STEP)
@@ -432,9 +435,11 @@ static void transform_domain(void)
          break;
    }
 
-   // calculate the window scale factor - compensates for window loss/gain
+   // create the window values
    for (i = 0; i < sweep_points; i++)
       tmp[(FFT_SIZE * 2) + i] = kaiser_window(i + offset, window_size, beta);
+
+   // calculate the window scale factor - compensates for window loss/gain
    float window_scale = 1.0f;
    if (td_func != TD_FUNC_LOWPASS_STEP)
    {
@@ -2098,15 +2103,10 @@ static void apply_edelay(void)
    int i;
    for (i = 0; i < sweep_points; i++)
    {
-      const float w = (float)(2 * VNA_PI * 1e-12) * electrical_delay * frequencies[i];
-
-      #if 0
-         const float s = sinf(w);
-         const float c = cosf(w);
-      #else
-         float s, c;
-         arm_sin_cos_f32(w, &s, &c);
-      #endif
+      //const float w = (float)(360 * 1e-12) * electrical_delay * frequencies[i];
+      const float w = 1e-12f * electrical_delay * frequencies[i];
+      float s, c;
+      arm_sin_cos_f32(w, &s, &c);
 
       if (sweep_mode & SWEEP_CH0_MEASURE)
       {
