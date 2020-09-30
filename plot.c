@@ -457,8 +457,8 @@ float linear(const float *v)
  */
 float phase(const float *v)
 {
-//	return (v[0] == 0.0f) ? 0.0f : 2.0f * atan2f(v[1], v[0]) / VNA_PI * 90.0f;
-	return (v[1] == 0.0f) ? 0.0f : atan2f(v[0], v[1]) * (float)(180.0 / VNA_PI);
+	return (v[0] == 0.0f) ? 0.0f : atan2f(v[1], v[0]) * (float)(180.0 / VNA_PI);
+	//return (v[1] == 0.0f) ? 0.0f : atan2f(v[0], v[1]) * (float)(180.0 / VNA_PI);
 }
 
 /*

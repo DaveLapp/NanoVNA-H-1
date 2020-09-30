@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.30-2 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.30-4 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
