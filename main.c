@@ -2100,13 +2100,14 @@ static void apply_edelay(void)
 {
    const uint16_t sweep_mode = get_sweep_mode();
 
+   const float w = 360.0f * 1e-12f * electrical_delay;
+   //const float w = 1e-12f * electrical_delay;
+
    int i;
    for (i = 0; i < sweep_points; i++)
    {
-      //const float w = (float)(360 * 1e-12) * electrical_delay * frequencies[i];
-      const float w = 1e-12f * electrical_delay * frequencies[i];
       float s, c;
-      arm_sin_cos_f32(w, &s, &c);
+      arm_sin_cos_f32(w * frequencies[i], &s, &c);
 
       if (sweep_mode & SWEEP_CH0_MEASURE)
       {
