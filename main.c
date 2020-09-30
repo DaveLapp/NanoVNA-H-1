@@ -2100,8 +2100,8 @@ static void apply_edelay(void)
 {
    const uint16_t sweep_mode = get_sweep_mode();
 
-   const float w = 360.0f * 1e-12f * electrical_delay;
-   //const float w = 1e-12f * electrical_delay;
+   //const float w = 360.0f * 1e-12f * electrical_delay;
+   const float w = 1e-12f * electrical_delay;
 
    int i;
    for (i = 0; i < sweep_points; i++)
