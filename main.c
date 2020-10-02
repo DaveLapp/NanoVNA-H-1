@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.30-4 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Oct.02-1 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -2107,7 +2107,7 @@ static void apply_edelay(void)
    for (i = 0; i < sweep_points; i++)
    {
       float s, c;
-      arm_sin_cos_f32(w * frequencies[i], &s, &c);
+      vna_sin_cos(w * frequencies[i], &s, &c);
 
       if (sweep_mode & SWEEP_CH0_MEASURE)
       {

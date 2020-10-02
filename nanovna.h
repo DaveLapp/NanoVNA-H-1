@@ -230,6 +230,9 @@ extern uint32_t frequencies[POINTS_COUNT];
 
 #define FFT_SIZE                256
 
+// Return sin/cos value, angle have range 0.0 to 1.0 (0 is 0 degree, 1 is 360 degree)
+void vna_sin_cos(float angle, float * pSinVal, float * pCosVal);
+
 int shell_printf(const char *fmt, ...);
 
 void cal_collect(int type);
