@@ -2030,28 +2030,42 @@ void apply_error_term(void)
 
 static void apply_error_term_at(int i)
 {
+   // ************
+   // S11
+
     // S11m' = S11m - Ed
     // S11a = S11m' / (Er + Es S11m')
+
     float s11mr = measured[0][i][0] - cal_data[ETERM_ED][i][0];
     float s11mi = measured[0][i][1] - cal_data[ETERM_ED][i][1];
+
     float err = cal_data[ETERM_ER][i][0] + s11mr * cal_data[ETERM_ES][i][0] - s11mi * cal_data[ETERM_ES][i][1];
     float eri = cal_data[ETERM_ER][i][1] + s11mr * cal_data[ETERM_ES][i][1] + s11mi * cal_data[ETERM_ES][i][0];
+
     float sq = err*err + eri*eri;
     float s11ar = (s11mr * err + s11mi * eri) / sq;
     float s11ai = (s11mi * err - s11mr * eri) / sq;
+
     measured[0][i][0] = s11ar;
     measured[0][i][1] = s11ai;
+
+   // ************
+   // S21
 
     // CAUTION: Et is inversed for efficiency
     // S21m' = S21m - Ex
     // S21a = S21m' (1-EsS11a)Et
+
     float s21mr = measured[1][i][0] - cal_data[ETERM_EX][i][0];
     float s21mi = measured[1][i][1] - cal_data[ETERM_EX][i][1];
+
 #if 0
     float esr = 1 - (cal_data[ETERM_ES][i][0] * s11ar - cal_data[ETERM_ES][i][1] * s11ai);
     float esi = 0 - (cal_data[ETERM_ES][i][1] * s11ar + cal_data[ETERM_ES][i][0] * s11ai);
+
     float etr = esr * cal_data[ETERM_ET][i][0] - esi * cal_data[ETERM_ET][i][1];
     float eti = esr * cal_data[ETERM_ET][i][1] + esi * cal_data[ETERM_ET][i][0];
+
     float s21ar = s21mr * etr - s21mi * eti;
     float s21ai = s21mi * etr + s21mr * eti;
 #else
@@ -2059,8 +2073,11 @@ static void apply_error_term_at(int i)
     float s21ar = s21mr * cal_data[ETERM_ET][i][0] - s21mi * cal_data[ETERM_ET][i][1];
     float s21ai = s21mi * cal_data[ETERM_ET][i][0] + s21mr * cal_data[ETERM_ET][i][1];
 #endif
+
     measured[1][i][0] = s21ar;
     measured[1][i][1] = s21ai;
+
+   // ************
 }
 #endif
 
@@ -2070,12 +2087,20 @@ static void apply_CH0_error_term_at(float gamma[2], int i)
 //   float *gamma   = measured[0][i];
    // S11m' = S11m - Ed
    // S11a = S11m' / (Er + Es S11m')
+
+   // m = sparam - ed
    const float mr = gamma[0] - cal_data[ETERM_ED][i][0];
    const float mi = gamma[1] - cal_data[ETERM_ED][i][1];
+
+   // c = es
    const float cr = cal_data[ETERM_ES][i][0];
    const float ci = cal_data[ETERM_ES][i][1];
+
+   // e = er + (m * c)
    const float er = cal_data[ETERM_ER][i][0] + (mr * cr) - (mi * ci);
    const float ei = cal_data[ETERM_ER][i][1] + (mr * ci) + (mi * cr);
+
+   // sparam = m / e
    const float sq =  (er * er) + (ei * ei);
    gamma[0]       = ((mr * er) + (mi * ei)) / sq;
    gamma[1]       = ((mi * er) - (mr * ei)) / sq;
@@ -2087,11 +2112,18 @@ static void apply_CH1_error_term_at(float gamma[2], int i)
 //   float *gamma   = measured[1][i];
    // CAUTION: Et is inversed for efficiency
    // S21a = (S21m - Ex) * Et
+
+   // m = sparam - ex
    const float mr = gamma[0] - cal_data[ETERM_EX][i][0];
    const float mi = gamma[1] - cal_data[ETERM_EX][i][1];
+
    // Not made CH1 correction by CH0 data
+
+   // c = et
    const float cr = cal_data[ETERM_ET][i][0];
    const float ci = cal_data[ETERM_ET][i][1];
+
+   // sparam = m * c
    gamma[0]       = (mr * cr) - (mi * ci);
    gamma[1]       = (mi * cr) + (mr * ci);
 }
